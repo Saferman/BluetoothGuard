@@ -36,6 +36,27 @@ public class BlueToothController {
     }
 
     /**
+     * 开始发现蓝牙
+     */
+    public void startDiscovery(){
+        assert(mAdapter!=null);
+        if (mAdapter.isDiscovering()) {
+            mAdapter.cancelDiscovery();
+        }
+        mAdapter.startDiscovery();
+    }
+
+    /**
+     * 关闭发现蓝牙
+     */
+    public void cancelDiscovery(){
+        assert(mAdapter!=null);
+        if (mAdapter.isDiscovering()) {
+            mAdapter.cancelDiscovery();
+        }
+    }
+
+    /**
      * 判断蓝牙当前状态 true 打开,false 关闭
      */
     public boolean getBlueToothStatus(){

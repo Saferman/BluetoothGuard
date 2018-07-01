@@ -10,6 +10,8 @@ import android.os.SystemClock;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
+import com.example.admin.bluetoothguard.guards.StatePerception;
+
 /**
  * Created by admin on 2018/6/14.
  */
@@ -33,6 +35,7 @@ public class MyService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
+
         Intent nfIntent = new Intent(this, LayoutActivity.class);
         PendingIntent pi = PendingIntent.getActivity(this, 0, nfIntent, 0);
         // 在API11之后构建Notification的方式
@@ -53,12 +56,12 @@ public class MyService extends Service {
             @Override
             public void run() {
                 //处理具体逻辑
-                Log.d("MyService", "thread log.d");
             }
         }).start();
         //设置可唤醒CPU的定时器
         AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-        int interval = 1 * 1 * 100; // 转换成毫秒数
+        int interval = 1 * 5 * 1000; // 转换成毫秒数
+        //二中方案如果是本地算法，需要长期运行，如果是远程算法可以快速短时间重启，读取数据 和远程交互
         long triggerAtTime = SystemClock.elapsedRealtime() + interval;
         Intent tempIntent = new Intent(this, AlarmReceiver.class);
         PendingIntent broadcastPi = PendingIntent.getBroadcast(this, 0, tempIntent, 0);

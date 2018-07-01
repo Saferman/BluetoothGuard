@@ -5,19 +5,19 @@
         <item
             android:id="@+id/show_BTdevices"
             android:icon="@drawable/ic_menu_camera"
-            android:title="Show BT devices" />
+            android:title="搜索附近蓝牙" />
         <item
-            android:id="@+id/open_BT"
+            android:id="@+id/tuling"
             android:icon="@drawable/ic_menu_gallery"
-            android:title="Open BT" />
+            android:title="图灵聊天" />
         <item
-            android:id="@+id/nav_slideshow"
+            android:id="@+id/voiceInteraction"
             android:icon="@drawable/ic_menu_slideshow"
-            android:title="retention" />
+            android:title="语音管家" />
         <item
-            android:id="@+id/nav_manage"
+            android:id="@+id/guards"
             android:icon="@drawable/ic_menu_manage"
-            android:title="retention" />
+            android:title="安全防护算法" />
     </group>
 
     <item android:title="Other functions">
