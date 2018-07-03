@@ -1,6 +1,5 @@
 package com.example.admin.bluetoothguard;
 
-import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -8,16 +7,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.widget.TextViewCompat;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
-import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -31,9 +23,6 @@ import android.widget.Toast;
 
 import com.example.admin.bluetoothguard.guards.StatePerception;
 import com.example.admin.bluetoothguard.voice.VoiceActivity;
-
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class LayoutActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {

@@ -4,96 +4,131 @@ package com.example.admin.bluetoothguard.voice;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.admin.bluetoothguard.R;
-import com.google.gson.Gson;
 import com.iflytek.cloud.RecognizerListener;
 import com.iflytek.cloud.RecognizerResult;
-import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
-import com.iflytek.cloud.SpeechRecognizer;
-import com.iflytek.cloud.SpeechSynthesizer;
-import com.iflytek.cloud.SpeechUtility;
-import com.iflytek.cloud.ui.RecognizerDialog;
-import com.iflytek.cloud.ui.RecognizerDialogListener;
 
 import java.util.ArrayList;
-import java.util.List;
+
 
 public class VoiceActivity extends AppCompatActivity {
 
-    //新闻文本
-    private static final String mNewsText = "我爱小萌花";
     private TextView textView;
-    private Gson mGson;
+    private XunFeiVoice xunfeiVoice;
+    private Handler mHanlder;
+    // 每次录音结束后，延时多久启动下一次录音
+    private int loopTime;
+    // 记录每次录音记录的字符串
+    private StringBuilder singleRecordResult = new StringBuilder();
+    // 命令关键字
+    // 识别到到关键字的时候会语音告诉用户（下一次的录音延时到语音播放结束后，尽可能短）
+    // 之后开启多次记录模式，直到识别到一次可执行任务，或者在单次录音中找到endCommand，并语音告诉（也需要延时下一次录音）
+    private String startCommand = "你好";
+    private boolean hasCommand = false;
+    private String startResponse = "主人";
+    private String endCommand = "结束";
+    private String endResponse = "进入休息";
+    // 记录多次录音记录的字符串
+    private StringBuilder multipleRecordResult = new StringBuilder();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_voice);
         initPermission();
-        // 将“12345678”替换成您申请的 APPID，申请地址： http://www.xfyun.cn
-        // 请勿在“ =”与 appid 之间添加任务空字符或者转义符
-        SpeechUtility.createUtility(this, SpeechConstant.APPID +"=56f22e12");//测试
-//        SpeechUtility.createUtility(MainActivity.this, SpeechConstant.APPID +"=5b2b1cb2");//我的
-        mGson = new Gson();
         textView = (TextView) findViewById(R.id.textView);
+        xunfeiVoice = new XunFeiVoice(VoiceActivity.this);
+        Log.d("XunFei", "create VoiceActivity");
+        interaction();
     }
 
-    // 参考 https://blog.csdn.net/dddxxxx/article/details/52458899
-    public void onSpeech(View view){
-        textView.setText(null);
-        //1. 创建SpeechRecognizer对象，第二个参数： 本地识别时传 InitListener
-        SpeechRecognizer mIat = SpeechRecognizer.createRecognizer( this, null); //语音识别器
-        //2. 设置听写参数，详见《 MSC Reference Manual》 SpeechConstant类
-        mIat.setParameter(SpeechConstant. DOMAIN, "iat" );// 短信和日常用语： iat (默认)
-        mIat.setParameter(SpeechConstant. LANGUAGE, "zh_cn" );// 设置中文
-        mIat.setParameter(SpeechConstant. ACCENT, "mandarin" );// 设置普通话
-        //3. 开始听写
-        mIat.startListening( mRecoListener);
+    private void interaction(){
+        xunfeiVoice.Synthesize("智能语音管家为您服务，请开始说话");
+        Log.d("XunFei", "Synthesize结束");//语音未播放完毕就执行了这一句
+        mHanlder = new Handler();
+        //麦克风和音响独立不延时会影响识别
+        mHanlder.postDelayed(task, 5000);//延时五秒
     }
+
+//    private int delaytime = 2000;// 延时二秒
+    private Runnable task = new Runnable() {
+        @Override
+        public void run() {
+            // 执行任务
+            xunfeiVoice.getSpeechWithMyListener(newRecoListener);
+//            mHanlder.postDelayed(this, delaytime);//毫秒,再次执行task本身,实现了循环的效果
+        }
+    };
+
 
     // 听写监听器
-    private RecognizerListener mRecoListener = new RecognizerListener() {
-        // 听写结果回调接口 (返回Json 格式结果，用户可参见附录 13.1)；
-//一般情况下会通过onResults接口多次返回结果，完整的识别内容是多次结果的累加；
-//关于解析Json的代码可参见 Demo中JsonParser 类；
-//isLast等于true 时会话结束。
+    private RecognizerListener newRecoListener = new RecognizerListener() {
         public void onResult(RecognizerResult results, boolean isLast) {
-            Log.e ("XunFei", results.getResultString());
             String text = JsonParser.parseIatResult(results.getResultString());
-            textView.append(text+"\n");
-//            System.out.println(results.getResultString()) ;
-//            showTip(results.getResultString()) ;
+            textView.append(text);
+            singleRecordResult.append(text);
+            if(!hasCommand){
+                if (text.contains(startCommand)){
+                    // 发现关键字
+                    hasCommand = true;
+                    xunfeiVoice.Synthesize(startResponse);
+                }
+            }
+            if(hasCommand){
+                multipleRecordResult.append(text);
+            }
+
         }
 
         // 会话发生错误回调接口
         public void onError(SpeechError error) {
-            showTip(error.getPlainDescription(true)) ;
             // 获取错误码描述
-            Log. e("XunFei", "error.getPlainDescription(true)==" + error.getPlainDescription(true ));
+            Log.e("XunFei", "error.getPlainDescription(true)==" + error.getPlainDescription(true ));
         }
 
         // 开始录音
         public void onBeginOfSpeech() {
-            showTip(" 开始录音 ");
+            singleRecordResult.setLength(0);
+            if(!hasCommand){
+                multipleRecordResult.setLength(0);
+            }
+            loopTime = 0;
         }
 
         //volume 音量值0~30， data音频数据
         public void onVolumeChanged(int volume, byte[] data) {
-            showTip(" 声音改变了 ");
         }
 
         // 结束录音
         public void onEndOfSpeech() {
-            showTip(" 结束录音 ");
+            textView.append("---录音结束\n");
+            if(!hasCommand){
+                if(singleRecordResult.toString().contains(startCommand)){
+                    // 发现关键字
+                    hasCommand = true;
+                    xunfeiVoice.Synthesize(startResponse);
+                }
+            }
+            if(hasCommand){
+//                textView.append("此时的multipleRecordResult:"+multipleRecordResult+"\n");
+                if(multipleRecordResult.toString().contains("网络") || multipleRecordResult.toString().contains(endCommand)){
+                    // 开启线程执行功能
+                    hasCommand = false;
+                    multipleRecordResult.setLength(0);
+                    xunfeiVoice.Synthesize(endResponse);
+                    loopTime = 2000;// 保证语音读完才开始继续录音
+                }
+            }
+            mHanlder.postDelayed(task, loopTime);// 延时x毫秒开始执行下一次录音
         }
 
         // 扩展用接口
@@ -101,73 +136,6 @@ public class VoiceActivity extends AppCompatActivity {
         }
     };
 
-    public void onRecognise(View view) {
-        //1.创建RecognizerDialog对象
-        RecognizerDialog mDialog = new RecognizerDialog(VoiceActivity.this, null);
-        //2.设置accent、 language等参数
-        mDialog.setParameter(SpeechConstant.LANGUAGE, "zh_cn");
-        mDialog.setParameter(SpeechConstant.ACCENT, "mandarin");
-        //若要将UI控件用于语义理解，必须添加以下参数设置，设置之后onResult回调返回将是语义理解
-        //结果
-        // mDialog.setParameter("asr_sch", "1");
-        // mDialog.setParameter("nlp_version", "2.0");
-        //3.设置回调接口
-        mDialog.setListener(mRecognizerDialogListener);
-        //4.显示dialog，接收语音输入
-        mDialog.show();
-    }
-
-    private void showTip (String data) {
-        Toast.makeText( this, data, Toast.LENGTH_SHORT).show() ;
-    }
-
-    private RecognizerDialogListener mRecognizerDialogListener =  new RecognizerDialogListener() {
-
-        /**
-         *
-         * @param recognizerResult 语音识别结果
-         * @param b true表示是标点符号
-         */
-        @Override
-        public void onResult(RecognizerResult recognizerResult, boolean b) {
-            // Toast.makeText(MainActivity.this, recognizerResult.getResultString(), Toast.LENGTH_LONG).show();
-            if (b) {
-                return;
-            }
-            ResultBean resultBean = mGson.fromJson(recognizerResult.getResultString(), ResultBean.class);
-            List<ResultBean.WsBean> ws = resultBean.getWs();
-            String w = "";
-            for (int i = 0; i < ws.size(); i++) {
-                List<ResultBean.WsBean.CwBean> cw = ws.get(i).getCw();
-                for (int j = 0; j < cw.size(); j++) {
-                    w += cw.get(j).getW();
-                }
-            }
-            Toast.makeText(VoiceActivity.this, w, Toast.LENGTH_SHORT).show();
-        }
-
-        @Override
-        public void onError(SpeechError speechError) {
-
-        }
-    };
-
-    public void onSynthesize(View view) {
-        //1.创建 SpeechSynthesizer 对象, 第二个参数： 本地合成时传 InitListener
-        SpeechSynthesizer mTts= SpeechSynthesizer.createSynthesizer(VoiceActivity.this, null);
-        //2.合成参数设置，详见《 MSC Reference Manual》 SpeechSynthesizer 类
-        //设置发音人（更多在线发音人，用户可参见 附录13.2
-        mTts.setParameter(SpeechConstant.VOICE_NAME, "xiaoyan"); //设置发音人
-        mTts.setParameter(SpeechConstant.SPEED, "50");//设置语速
-        mTts.setParameter(SpeechConstant.VOLUME, "80");//设置音量，范围 0~100
-        mTts.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD); //设置云端
-        //设置合成音频保存位置（可自定义保存位置），保存在“./sdcard/iflytek.pcm”
-        //保存在 SD 卡需要在 AndroidManifest.xml 添加写 SD 卡权限
-        //仅支持保存为 pcm 和 wav 格式， 如果不需要保存合成音频，注释该行代码
-        mTts.setParameter(SpeechConstant.TTS_AUDIO_PATH, "./sdcard/iflytek.pcm");
-        //3.开始合成
-        mTts.startSpeaking(mNewsText, null);
-    }
 
     /**
      * android 6.0 以上需要动态申请权限
