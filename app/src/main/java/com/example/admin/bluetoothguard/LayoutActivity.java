@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.admin.bluetoothguard.guards.StatePerception;
+import com.example.admin.bluetoothguard.voice.VoiceActivity;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -160,7 +161,8 @@ public class LayoutActivity extends AppCompatActivity
         } else if (id == R.id.tuling) {
 
         } else if (id == R.id.voiceInteraction) {
-
+            Intent voiceIntent = new Intent(this, VoiceActivity.class);
+            startActivity(voiceIntent);
         } else if (id == R.id.guards) {
             statePerception.start();
 
