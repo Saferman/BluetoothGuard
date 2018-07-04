@@ -2,26 +2,34 @@ package com.example.admin.bluetoothguard.voice;
 
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import com.example.admin.bluetoothguard.R;
+import com.example.admin.bluetoothguard.voice.signals.VoiceSignal;
+import com.example.admin.bluetoothguard.voice.tasks.TaskManager;
 import com.iflytek.cloud.RecognizerListener;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechError;
 
 import java.util.ArrayList;
+import java.util.PriorityQueue;
 
 
 public class VoiceActivity extends AppCompatActivity {
-
+    private Activity voiceActivity;
     private TextView textView;
+    private Button exitButton;
     private XunFeiVoice xunfeiVoice;
     private Handler mHanlder;
     // 每次录音结束后，延时多久启动下一次录音
@@ -39,13 +47,29 @@ public class VoiceActivity extends AppCompatActivity {
     // 记录多次录音记录的字符串
     private StringBuilder multipleRecordResult = new StringBuilder();
 
+    // 语音交互的任务
+    // 语音交互任务不抢占录音处于hasCommand的状态
+    // 这种队列是线程不安全的
+    private PriorityQueue<VoiceSignal> voiceQueue = new PriorityQueue<>();
+
+    // 任务管理类
+    private TaskManager taskManager = new TaskManager(voiceQueue);
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_voice);
         initPermission();
+        voiceActivity = this;
         textView = (TextView) findViewById(R.id.textView);
+        exitButton = (Button) findViewById(R.id.exitButton);
+        exitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                voiceActivity.finish();
+            }
+        });
         xunfeiVoice = new XunFeiVoice(VoiceActivity.this);
         Log.d("XunFei", "create VoiceActivity");
         interaction();
@@ -56,11 +80,11 @@ public class VoiceActivity extends AppCompatActivity {
         Log.d("XunFei", "Synthesize结束");//语音未播放完毕就执行了这一句
         mHanlder = new Handler();
         //麦克风和音响独立不延时会影响识别
-        mHanlder.postDelayed(task, 5000);//延时五秒
+        mHanlder.postDelayed(voiceRecognize, 5000);//延时五秒
     }
 
 //    private int delaytime = 2000;// 延时二秒
-    private Runnable task = new Runnable() {
+    private Runnable voiceRecognize = new Runnable() {
         @Override
         public void run() {
             // 执行任务
@@ -120,21 +144,49 @@ public class VoiceActivity extends AppCompatActivity {
             }
             if(hasCommand){
 //                textView.append("此时的multipleRecordResult:"+multipleRecordResult+"\n");
-                if(multipleRecordResult.toString().contains("网络") || multipleRecordResult.toString().contains(endCommand)){
+                if(multipleRecordResult.toString().contains(endCommand)){
                     // 开启线程执行功能
                     hasCommand = false;
                     multipleRecordResult.setLength(0);
                     xunfeiVoice.Synthesize(endResponse);
                     loopTime = 2000;// 保证语音读完才开始继续录音
+                }else if(taskManager.checkTask(multipleRecordResult.toString())){
+                    // 语音告诉用户程序捕获到需要执行的命令
+                    String voiceFoundedTask = taskManager.getVoiceFoundedTask();
+                    xunfeiVoice.Synthesize(voiceFoundedTask);
+                    loopTime = 2000;// 保证语音读完才开始继续录音
                 }
             }
-            mHanlder.postDelayed(task, loopTime);// 延时x毫秒开始执行下一次录音
+            // 不抢占hasCommand状态
+            if(!hasCommand){
+                checkVoiceSignal();
+            }
+            mHanlder.postDelayed(voiceRecognize, loopTime);// 延时x毫秒开始执行下一次录音
         }
 
         // 扩展用接口
         public void onEvent(int eventType, int arg1 , int arg2, Bundle obj) {
         }
     };
+
+    private void checkVoiceSignal(){
+        VoiceSignal voiceSingal = voiceQueue.poll();
+        if(voiceSingal != null){
+            // voiceQueue队列不为空
+            // 将启动一段录音程序得到用户符合voiceSingal中可选择答案的结果后结束
+            // 或者启动一段新的长时间交互录音状态
+        }
+    }
+
+    /**
+     * 改写
+     */
+    @Override
+    public void onBackPressed() {
+//        super.onBackPressed();
+//        this.finish();      //退出当前活动
+    }
+
 
 
     /**
