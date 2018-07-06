@@ -23,5 +23,6 @@ public class Tuling {
         // 如果遇到需要语音交互的地方，新建一个VoiceSignal,需要指定提出的问题，和可以接受的答案范围，并且调用bindTaskSignal.addVoiceSignal（）
         // 使用bindTaskSignal.getVoiceSignalResult 等待结果！！
         // 只能有一个VoiceSignal
+        // 任何回答不能包括系统指令
     }
 }

@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.admin.bluetoothguard.R;
 import com.example.admin.bluetoothguard.voice.signals.VoiceSignal;
@@ -31,7 +32,7 @@ public class VoiceActivity extends AppCompatActivity {
     private TextView textView;
     private Button exitButton;
     private XunFeiVoice xunfeiVoice;
-    private Handler mHanlder;
+    private Handler mHandler;
     // 每次录音结束后，延时多久启动下一次录音
     private int loopTime;
     // 记录每次录音记录的字符串
@@ -51,6 +52,9 @@ public class VoiceActivity extends AppCompatActivity {
     // 语音交互任务不抢占录音处于hasCommand的状态
     // 这种队列是线程不安全的
     private PriorityQueue<VoiceSignal> voiceQueue = new PriorityQueue<>();
+    // 是否执行VoiceSignal 和 对应的新的Listener
+    private boolean hasVoiceSignal = false;
+
 
     // 任务管理类
     private TaskManager taskManager = new TaskManager(voiceQueue);
@@ -78,9 +82,9 @@ public class VoiceActivity extends AppCompatActivity {
     private void interaction(){
         xunfeiVoice.Synthesize("智能语音管家为您服务，请开始说话");
         Log.d("XunFei", "Synthesize结束");//语音未播放完毕就执行了这一句
-        mHanlder = new Handler();
+        mHandler = new Handler();
         //麦克风和音响独立不延时会影响识别
-        mHanlder.postDelayed(voiceRecognize, 5000);//延时五秒
+        mHandler.postDelayed(voiceRecognize, 5000);//延时五秒
     }
 
 //    private int delaytime = 2000;// 延时二秒
@@ -88,13 +92,20 @@ public class VoiceActivity extends AppCompatActivity {
         @Override
         public void run() {
             // 执行任务
-            xunfeiVoice.getSpeechWithMyListener(newRecoListener);
+            if(hasVoiceSignal){
+                xunfeiVoice.getSpeechWithMyListener(voiceSignalRecoListener);
+            }else{
+                xunfeiVoice.getSpeechWithMyListener(newRecoListener);
+            }
+
 //            mHanlder.postDelayed(this, delaytime);//毫秒,再次执行task本身,实现了循环的效果
         }
     };
 
 
     // 听写监听器
+    // singleRecordResult 用于 监听启动关键词
+    // multipleRecordResult 用于识别用户的命令
     private RecognizerListener newRecoListener = new RecognizerListener() {
         public void onResult(RecognizerResult results, boolean isLast) {
             String text = JsonParser.parseIatResult(results.getResultString());
@@ -147,7 +158,6 @@ public class VoiceActivity extends AppCompatActivity {
                 if(multipleRecordResult.toString().contains(endCommand)){
                     // 开启线程执行功能
                     hasCommand = false;
-                    multipleRecordResult.setLength(0);
                     xunfeiVoice.Synthesize(endResponse);
                     loopTime = 2000;// 保证语音读完才开始继续录音
                 }else if(taskManager.checkTask(multipleRecordResult.toString())){
@@ -155,13 +165,14 @@ public class VoiceActivity extends AppCompatActivity {
                     String voiceFoundedTask = taskManager.getVoiceFoundedTask();
                     xunfeiVoice.Synthesize(voiceFoundedTask);
                     loopTime = 2000;// 保证语音读完才开始继续录音
+                    hasCommand = false;
                 }
-            }
-            // 不抢占hasCommand状态
-            if(!hasCommand){
+            }else{
+                // 不抢占hasCommand状态
                 checkVoiceSignal();
             }
-            mHanlder.postDelayed(voiceRecognize, loopTime);// 延时x毫秒开始执行下一次录音
+
+            mHandler.postDelayed(voiceRecognize, loopTime);// 延时x毫秒开始执行下一次录音
         }
 
         // 扩展用接口
@@ -170,13 +181,82 @@ public class VoiceActivity extends AppCompatActivity {
     };
 
     private void checkVoiceSignal(){
-        VoiceSignal voiceSingal = voiceQueue.poll();
-        if(voiceSingal != null){
+        this.currentVoiceSignal = voiceQueue.poll();
+        if(this.currentVoiceSignal != null){
             // voiceQueue队列不为空
             // 将启动一段录音程序得到用户符合voiceSingal中可选择答案的结果后结束
             // 或者启动一段新的长时间交互录音状态
+            // 二种方案：重新设置mHandller的Runnable对象，或者重新设置监听器
+            // 新加入的VoiceSignal 并没有独立的储存录入的字符串的空间，和主录音一致
+            hasVoiceSignal = true;
+            xunfeiVoice.Synthesize(this.currentVoiceSignal.getNotificationVoiceText());
+            singleRecordResult.setLength(0);
+            multipleRecordResult.setLength(0);
+            textView.setText(null);
         }
     }
+
+    // 编写voiceSingalRecoListener
+    // 正在执行的voiceSignal
+    // singleRecordResult只是用于方便每次结束multiple添加内容
+    private VoiceSignal currentVoiceSignal;
+    private RecognizerListener voiceSignalRecoListener = new RecognizerListener() {
+        @Override
+        public void onResult(RecognizerResult results, boolean b) {
+            String text = JsonParser.parseIatResult(results.getResultString());
+            textView.append(text);
+            singleRecordResult.append(text);
+        }
+
+        @Override
+        public void onVolumeChanged(int i, byte[] bytes) {
+
+        }
+
+        @Override
+        public void onBeginOfSpeech() {
+            singleRecordResult.setLength(0);
+            loopTime = 0;
+        }
+
+        @Override
+        public void onEndOfSpeech() {
+            textView.append("---voiceSignal录音结束\n");
+            multipleRecordResult.append(singleRecordResult.toString());
+            String playedVoice;
+            // 检验现在用户输入的语音是否是有效（期望的答案）
+            if(currentVoiceSignal.checkValid(multipleRecordResult.toString())){
+                playedVoice = currentVoiceSignal.getFounedVoiceText();// 得到有效回答时播放的反馈语音，可优化加入具体的得到的结果
+                xunfeiVoice.Synthesize(playedVoice);
+                // 恢复主录音参数
+                hasVoiceSignal = false;
+                textView.setText(null);
+                singleRecordResult.setLength(0);
+                multipleRecordResult.setLength(0);
+            }else{
+                // 如果没找到，只保留这次的录音
+                playedVoice = currentVoiceSignal.getUnfoundedVoiceText(); //没得到有效回答时播放的反馈语音
+                xunfeiVoice.Synthesize(playedVoice);
+                multipleRecordResult.setLength(0);
+                multipleRecordResult.append(singleRecordResult.toString());
+            }
+            // 根据前面的语音输出动态设置这个值
+            loopTime = 2000;
+            mHandler.postDelayed(voiceRecognize, loopTime);// 延时x毫秒开始执行下一次录音
+        }
+
+
+
+        @Override
+        public void onError(SpeechError speechError) {
+
+        }
+
+        @Override
+        public void onEvent(int i, int i1, int i2, Bundle bundle) {
+
+        }
+    };
 
     /**
      * 改写
@@ -187,6 +267,12 @@ public class VoiceActivity extends AppCompatActivity {
 //        this.finish();      //退出当前活动
     }
 
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+        taskManager.finishTread();
+        Toast.makeText(this, "智能语音管家活动销毁", Toast.LENGTH_SHORT).show();
+    }
 
 
     /**

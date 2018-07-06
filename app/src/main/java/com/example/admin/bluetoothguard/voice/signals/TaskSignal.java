@@ -49,6 +49,9 @@ public class TaskSignal implements Comparable<VoiceSignal>  {
 
     public String getVoiceSignalResult(){
         // 怎么在这里实现阻塞
+        while(this.voiceSignal.getValidResult() == null){
+        }
+        return voiceSignal.getValidResult();
     }
 
     /**
