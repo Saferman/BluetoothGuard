@@ -64,6 +64,7 @@ public class TulingActivity extends AppCompatActivity {
             switch (msg.what) {
                 case TULING_HTTP_FINISHED_MESSAGE:
                     String tulingResponseText = tulingResArray.get(resArrayPos);
+                    isSynthesize = true; // 必须放到Syth前面，因为在回调的话，很可能还没开始播放语音就执行到录音开始了
                     xunfeiVoice.SynthesizeWithListener(tulingResponseText, mTtsListener);
                     // 其余操作
                     if(tulingAction.getOpt() != null){
@@ -71,8 +72,9 @@ public class TulingActivity extends AppCompatActivity {
                         tulingAction.clearOpt();
                     }
                     textView.append(tulingName + " : " + tulingResponseText +" \n");
-                    loopTime = 1000;// 怎么解决下次录音会记录播放的语音
+                    loopTime = 500;// 怎么解决下次录音会记录播放的语音
                     mHandler.postDelayed(voiceRecognize, loopTime);// 延时x毫秒开始执行下一次录音
+                    LogUtil.d("Tuling", "uiHnalder 的 mHandler 运行");
                     break;
                 default:
                     break;
@@ -100,11 +102,13 @@ public class TulingActivity extends AppCompatActivity {
         });
         xunfeiVoice = new XunFeiVoice(TulingActivity.this);
         isSynthesize = false;
+        LogUtil.d("Tuling", "create 设置播放语音为false");
         tulingResArray.clear();
         interaction();
     }
 
     private void interaction(){
+        isSynthesize = true;
         xunfeiVoice.SynthesizeWithListener(tulingName + "为您服务，请开始说话", mTtsListener);
         textView.setText(null);
         mHandler = new Handler();
@@ -119,10 +123,12 @@ public class TulingActivity extends AppCompatActivity {
         public void run() {
             // 执行任务
             if(isSynthesize){
-                mHandler.postDelayed(voiceRecognize, 1000);
+                mHandler.postDelayed(voiceRecognize, 500);
+                LogUtil.d("Tuling", "voiceRecognize 的 mHandler 运行");
             }else {
                 // 可以插入一个提示音字符
                 if(!finishFlag){
+                    LogUtil.d("Tuling", "voiceRecognize录音启动了");
                     xunfeiVoice.getSpeechWithMyListener(newRecoListener);
                 }
             }
@@ -162,8 +168,9 @@ public class TulingActivity extends AppCompatActivity {
                 tulingHandler.handle(tulingResArray, uiHandler, singleRecordResult.toString(), tulingAction);
             }else{
                 mHandler.postDelayed(voiceRecognize, 500);//延时x秒，单位毫秒
+                LogUtil.d("Tuling", "onEndOfSpeech 的 mHandler 运行");
             }
-
+            LogUtil.d("Tuling", "录音程序结束了");
         }
 
         // 扩展用接口
@@ -205,7 +212,7 @@ public class TulingActivity extends AppCompatActivity {
 
         @Override
         public void onSpeakBegin() {
-            isSynthesize = true;
+            LogUtil.d("Tuling", "onSpeakBegin 设置播放语音为true");
             resArrayPos += 1;
         }
 
@@ -217,11 +224,13 @@ public class TulingActivity extends AppCompatActivity {
         @Override
         public void onCompleted(SpeechError error) {
             if(resArrayPos < tulingResArray.size()){
+                isSynthesize = true;
                 xunfeiVoice.SynthesizeWithListener(tulingResArray.get(resArrayPos),mTtsListener);
             }else{
                 resArrayPos = 0;
                 tulingResArray.clear();
                 isSynthesize = false;
+                LogUtil.d("Tuling", "onCompleted 设置播放语音为false");
             }
         }
 
