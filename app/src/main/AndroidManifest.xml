@@ -44,8 +44,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".voice.VoiceActivityBackUp" />
-        <activity android:name=".voice.VoiceActivity"></activity>
+        <activity android:name=".voice.VoiceActivity" />
+        <activity android:name=".tuling.TulingActivity"></activity>
+        <activity android:name=".commons.ImageDialog" android:theme="@style/myDialogTheme" />
     </application>
 
 </manifest>

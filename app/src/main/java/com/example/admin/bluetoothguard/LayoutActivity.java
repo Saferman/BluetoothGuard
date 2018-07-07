@@ -22,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.admin.bluetoothguard.guards.StatePerception;
+import com.example.admin.bluetoothguard.tuling.TulingActivity;
 import com.example.admin.bluetoothguard.voice.VoiceActivity;
 
 public class LayoutActivity extends AppCompatActivity
@@ -148,7 +149,8 @@ public class LayoutActivity extends AppCompatActivity
 //            // 打开蓝牙。直接用类实现，除非局部界面启动活动
 //            blueTooth.openBlueTooth(this, OPEN_BLUETOOTH_REQUEST_CODE);
         } else if (id == R.id.tuling) {
-
+            Intent tulingIntent = new Intent(this, TulingActivity.class);
+            startActivity(tulingIntent);
         } else if (id == R.id.voiceInteraction) {
             Intent voiceIntent = new Intent(this, VoiceActivity.class);
             startActivity(voiceIntent);

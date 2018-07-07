@@ -13,6 +13,12 @@ import java.util.concurrent.BlockingQueue;
  */
 
 public class VoiceSignal implements Comparable<VoiceSignal> {
+    // 语音信号的类型
+    // 我们认为程序发出的语音信号有三种类型
+    // 1. 问答语音信息号，执行的任务需要用户做出某项决策或者输入信息都需要这种信号；
+    // 提出问题后需要得到程序设定的接受范围答案后就结束
+    // 2. 通知类信息，仅仅是执行任务的程序需要语音告知用户一些情况的时候使用
+    // 3. 长久语音交互? 暂时不考虑这种情况
     private int priority = Priority.getNormal();
 
     // 这段VoiceSignal执行需要传递给用户的语音
@@ -23,9 +29,9 @@ public class VoiceSignal implements Comparable<VoiceSignal> {
         return unfoundedVoiceText;
     }
     // 找到用户输入的有效命令
-    private String founedVoiceText = "成功";
+    private String founedVoiceText = "成功，您的输入是";
     public String getFounedVoiceText(){
-        return founedVoiceText;
+        return founedVoiceText + validResult;
     }
     // 可以接受的用户反馈关键字，或逻辑
     private String[] validResultArray;
@@ -34,7 +40,7 @@ public class VoiceSignal implements Comparable<VoiceSignal> {
     // 最终得到有效回答关键字
     // 此队列参考链接：https://blog.csdn.net/tianshi_kco/article/details/53026173
 //    private ArrayBlockingQueue<String> validResultQueue =new ArrayBlockingQueue<String>(1);
-    // 注意这个只能设置一次，因为任务子线程会实时读取！
+    // 注意这个只能设置一次，因为任务子线程会实时读取！任务调用getValidResult后无需释放，因为foundedVoiceText还需要
     private String validResult = null;
 
     // 初始化

@@ -8,7 +8,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.example.admin.bluetoothguard.voice.VoiceActivity"
+    tools:context="com.example.admin.bluetoothguard.tuling.TulingActivity"
     android:orientation="vertical">
 
     <ScrollView
@@ -20,10 +20,11 @@
             android:id="@+id/textView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
     </ScrollView>
 
     <Button
-        android:id="@+id/voiceExitButton"
+        android:id="@+id/tulingExitButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="退出"/>

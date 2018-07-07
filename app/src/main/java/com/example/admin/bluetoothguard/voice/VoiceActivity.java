@@ -67,7 +67,7 @@ public class VoiceActivity extends AppCompatActivity {
         initPermission();
         voiceActivity = this;
         textView = (TextView) findViewById(R.id.textView);
-        exitButton = (Button) findViewById(R.id.exitButton);
+        exitButton = (Button) findViewById(R.id.voiceExitButton);
         exitButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -199,7 +199,7 @@ public class VoiceActivity extends AppCompatActivity {
     // 编写voiceSingalRecoListener
     // 正在执行的voiceSignal
     // singleRecordResult只是用于方便每次结束multiple添加内容
-    private VoiceSignal currentVoiceSignal;
+    private VoiceSignal currentVoiceSignal; //设置的值在语音结束后会残留，小心调用
     private RecognizerListener voiceSignalRecoListener = new RecognizerListener() {
         @Override
         public void onResult(RecognizerResult results, boolean b) {
